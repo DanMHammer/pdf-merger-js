@@ -1,11 +1,12 @@
 const pdf = require('pdfjs')
+const fs = require('fs/promises')
 
 class PDFMerger {
   constructor () {
     this._resetDoc()
   }
 
-  add (inputFile, pages) {
+  async add (inputFile, pages) {
     if (typeof pages === 'undefined' || pages === null) {
       return this._addEntireDocument(inputFile, pages)
     } else if (Array.isArray(pages)) {
@@ -39,19 +40,11 @@ class PDFMerger {
   }
 
   async _getInputFile (inputFile) {
-    return new Promise((resolve) => {
       if (inputFile instanceof Buffer) {
-        resolve(inputFile)
+        return inputFile
       } else {
-        const fileReader = new window.FileReader()
-
-        fileReader.onload = function (evt) {
-          resolve(fileReader.result)
-        }
-
-        fileReader.readAsArrayBuffer(inputFile)
+        return fs.readFile(inputFile)
       }
-    })
   }
 
   async _addEntireDocument (inputFile) {
@@ -68,19 +61,10 @@ class PDFMerger {
       from > 0 &&
       to > from
     ) {
-      const pages = []
-
-      for (let i = from; i <= to; i++) {
-        pages.push(i)
-      }
-
       const src = await this._getInputFile(inputFile)
       const ext = new pdf.ExternalDocument(src)
       this.doc.setTemplate(ext)
-
-      return Promise.all(
-        pages.map(async (page) => this.doc.addPageOf(page, ext))
-      )
+      this.doc.addPageRangeOf(ext, from, to)
     } else {
       console.log('invalid function parameter')
     }
@@ -91,12 +75,13 @@ class PDFMerger {
       const src = await this._getInputFile(inputFile)
       const ext = new pdf.ExternalDocument(src)
       this.doc.setTemplate(ext)
+      this.doc.addSpecificPagesOf(ext, pages)
 
-      return Promise.all(
-        pages.map(async (page) => {
-          this.doc.addPageOf(page, ext)
-        })
-      )
+      // return Promise.all(
+      //   pages.map(async (page) => {
+      //     this.doc.addPageOf(page, ext)
+      //   })
+      // )
     }
   }
 
@@ -104,22 +89,16 @@ class PDFMerger {
     return this.doc.asBuffer()
   }
 
-  async saveAsBlob () {
-    const buffer = await this.saveAsBuffer()
-
-    return new window.Blob([buffer], {
-      type: 'application/pdf'
-    })
-  }
-
   async save (fileName) {
-    const blob = await this.saveAsBlob()
-
-    const link = document.createElement('a')
-    link.href = window.URL.createObjectURL(blob)
-    link.download = `${fileName}.pdf`
-    link.click()
+    try {
+      const buffer = await this.saveAsBuffer()
+      await fs.writeFile(fileName, buffer)
+      this._resetDoc()
+    } catch (error) {
+      console.log(error)
+    }
   }
+
 }
 
 module.exports = PDFMerger

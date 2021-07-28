@@ -1,76 +1,113 @@
-# Description
+## Setup
 
-This node.js library can **merge multiple PDF documents**, or parts of them, to one new PDF document. It's only dependency is [pdfjs](https://www.npmjs.com/package/pdfjs) so it can run in any javascript-only environnement **without any external dependencies**.
+Clone https://github.com/DanMHammer/pdfjs/tree/addPageRangeOf
 
-This library is inspired by the [PHP library PDFMerger](https://github.com/myokyawhtun/PDFMerger) and has a very similar API.
+In pdfjs, run `yarn link` (might need to elevate)
 
-## Installation
+In pdf-merger-js run `yarn link "pdfjs"`
 
-`npm install --save pdf-merger-js`
+## Performance Testing
 
-## Code sample
+`npm run test:performance`
 
-```javascript
-const PDFMerger = require('pdf-merger-js');
+This will test a few things:
 
-var merger = new PDFMerger();
+Non Browser: 
+  - Original
+  - Simple optimization moving this code block outside of the for loops:
+   ```javascript
+      const src = (inputFile instanceof Buffer) ? inputFile : fs.readFileSync(inputFile)
+      const ext = new pdf.ExternalDocument(src)
+      this.doc.setTemplate(ext)
+   ```
+  - Promises implementation
+  - Implementation of the new addPageRangeOf and addSpecificPagesOf functions from pdfjs
+  - Async Implementation of the new functions from pdfjs
 
-(async () => {
-  merger.add('pdf1.pdf');  //merge all pages. parameter is the path to file and filename.
-  merger.add('pdf2.pdf', [2]); // merge only page 2
-  merger.add('pdf2.pdf', [1, 3]); // merge the pages 1 and 3
-  merger.add('pdf2.pdf', '4, 7, 8'); // merge the pages 4, 7 and 8
-  merger.add('pdf3.pdf', '1 to 2'); //merge pages 1 to 2
-  merger.add('pdf3.pdf', '3-4'); //merge pages 3 to 4
+Browser:
+The browser version already contains the for loop optimization and Promise.all, so that is not tested
+  - Original
+  - Implementation of the new addPageRangeOf and addSpecificPagesOf functions from this PR against pdfjs: https://github.com/rkusa/pdfjs/pull/263
 
-  await merger.save('merged.pdf'); //save under given name and reset the internal document
-})();
+For both, the test evaluates:
+1. The memory used by adding a range of pages or specific page numbers is reduced by the newFns 
+2. The execution time
+3. The extra memory used by adding specific pages vs the entire document is also reduced.
+
+## Results (reformatted)
+
+```
+PASS  test/performance.test.js (36.354 s)
+  PDFMerger
+    ✓ main-old: merge two files with many pages with page range (21027 ms)
+    ✓ main-simple_changes: merge two files with many pages with page range (2354 ms)
+    ✓ main-promises: merge two files with many pages with page range using Promises (1340 ms)
+    ✓ main-async: merge two files with many pages with page range using async (1265 ms)
+    ✓ main-async-newFns: merge two files with many pages with page range using async and new functions (1371 ms)
+    ✓ main: merge two files with many pages with page range using new pdfjs functions (1506 ms)
+    ✓ main: merge two files with many pages (1904 ms)
+    ✓ main: compare memory usage (55 ms)
+    ✓ browser-old: merge two files with many pages with page range (1247 ms)
+    ✓ browser: merge two files with many pages with page range using new pdfjs functions (1080 ms)
+    ✓ browser: merge two files with many pages (1594 ms)
+    ✓ browser: compare memory usage (44 ms)
+
+Test Suites: 1 passed, 1 total
+Tests:       12 passed, 12 total
+Snapshots:   0 total
+Time:        37.554 s
+
+Non Browser:
+  {
+    consumption: {
+      old: 1445.703125,
+      simpleChages: 217.11328125,
+      promises: 186.7578125,
+      async: 185.08984375,
+      asyncNewFns: 235.6171875,
+      newFns: 238.4375,
+      entireDoc: 210.81640625
+    },
+    time: {
+      oldTime: [ 20, 996347817 ],
+      simpleChagesTime: [ 2, 320817410 ],
+      promisesTime: [ 1, 288916547 ],
+      asyncTime: [ 1, 237489280 ],
+      asyncNewFnsTime: [ 1, 332431017 ],
+      newFnsTime: [ 1, 468168805 ],
+      entireDocTime: [ 1, 862276504 ]
+    },
+    percentDiffs: {
+      old: 585.7640497322537,
+      simpleChages: 2.9868998869721506,
+      promises: -11.412106950286276,
+      async: -12.20330189553262,
+      newFns: 13.101965943411958
+    }
+  }
+
+Browser:
+  {
+    consumption: { 
+      old: 188.22265625, 
+      newFns: 239.73046875, 
+      entireDoc: 240.6484375 
+    },
+    time: {
+      oldTime: [ 1, 185444559 ],
+      newFnsTime: [ 1, 4546227 ],
+      entireDocTime: [ 1, 554343781 ]
+    },
+    percentDiffs: { 
+      old: -21.785215725741, 
+      newFns: -0.38145635165405967 
+    }
+  }
+
 ```
 
-### Browser Sample - React
+### Takeaway
 
-```javascript
-import PDFMerger from 'pdf-merger-js/browser';
-import React, { useEffect, useState } from 'react';
+It appears from my performance testing that these new functions I submitted to pdfjs reduce the overall execution time but use slightly more memory than just wrapping in Promises/using async.
 
-// files: Array of PDF File or Blob objects
-const Merger = (files) => {
-  const [mergedPdfUrl, setMergedPdfUrl] = useState();
-
-  useEffect(() => {
-    const render = async () => {
-      const merger = new PDFMerger();
-
-      await Promise.all(files.map(async (file) => await merger.add(file)));
-
-      const mergedPdf = await merger.saveAsBlob();
-      const url = URL.createObjectURL(mergedPdf);
-
-      return setMergedPdfUrl(url);
-    };
-
-    render().catch((err) => {
-      throw err;
-    });
-
-    () => setMergedPdfUrl({});
-  }, [files, setMergedPdfUrl]);
-
-  return !data ? (
-    <>Loading</>
-  ) : (
-    <iframe
-      height={1000}
-      src={`${mergedPdfUrl}`}
-      title='pdf-viewer'
-      width='100%s'
-    ></iframe>
-  );
-};
-```
-
-## Similar libraries
-
-* [pdf-merge](https://www.npmjs.com/package/pdf-merge) has a dependency on [PDFtk](https://www.pdflabs.com/tools/pdftk-the-pdf-toolkit/).
-* [easy-pdf-merge](https://www.npmjs.com/package/easy-pdf-merge) has a dependency on the [Apache PDFBox® - A Java PDF Library](https://pdfbox.apache.org/).
-* [pdfmerge](https://www.npmjs.com/package/pdfmerge) has a dependency on python and [PyPDF2](https://pythonhosted.org/PyPDF2/).
+I recommend converting index.js to use async functions for adding Pages and cleaning them up by only setting the template once. This also will make it simpler to mostly unify the two versions.

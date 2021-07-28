@@ -8,7 +8,8 @@
     "standard": "standard",
     "standard:fix": "standard --fix",
     "test": "jest --detectOpenHandles",
-    "test:watch": "jest --watch --forceExit --detectOpenHandles"
+    "test:watch": "jest --watch --forceExit --detectOpenHandles",
+    "test:performance": "node --expose-gc ./node_modules/.bin/jest --runInBand performance.test.js"
   },
   "standard": {
     "env": [

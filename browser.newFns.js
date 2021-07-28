@@ -77,10 +77,8 @@ class PDFMerger {
       const src = await this._getInputFile(inputFile)
       const ext = new pdf.ExternalDocument(src)
       this.doc.setTemplate(ext)
-
-      return Promise.all(
-        pages.map(async (page) => this.doc.addPageOf(page, ext))
-      )
+      this.doc.addPageRangeOf(ext, from, to)
+      return;
     } else {
       console.log('invalid function parameter')
     }
@@ -91,12 +89,8 @@ class PDFMerger {
       const src = await this._getInputFile(inputFile)
       const ext = new pdf.ExternalDocument(src)
       this.doc.setTemplate(ext)
-
-      return Promise.all(
-        pages.map(async (page) => {
-          this.doc.addPageOf(page, ext)
-        })
-      )
+      this.doc.addSpecificPagesOf(ext, pages)
+      return;
     }
   }
 

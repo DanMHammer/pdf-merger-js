@@ -2,7 +2,7 @@ const path = require('path')
 const fs = require('fs-extra')
 const pdfDiff = require('pdf-diff')
 
-const PDFMerger = require('../index')
+const PDFMerger = require('../index.promises')
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures')
 const TMP_DIR = path.join(__dirname, 'tmp')
