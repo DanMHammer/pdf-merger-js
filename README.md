@@ -108,6 +108,6 @@ Browser:
 
 ### Takeaway
 
-It appears from my performance testing that these new functions I submitted to pdfjs reduce the overall execution time but use slightly more memory than just wrapping in Promises/using async.
+It appears from my performance testing that these new functions I submitted to pdfjs do not reduce the overall execution time OR use less memory than just wrapping in Promises/async.
 
 I recommend converting index.js to use async functions for adding Pages and cleaning them up by only setting the template once. This also will make it simpler to mostly unify the two versions.
