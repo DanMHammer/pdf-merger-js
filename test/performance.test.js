@@ -2,6 +2,7 @@ const path = require('path')
 const fs = require('fs-extra')
 
 const PDFMerger = require('../index')
+const PDFMergerOld = require(`../index.old`)
 const PDFMergerBrowser = require(`../browser`)
 
 const FIXTURES_DIR = path.join(__dirname, 'fixtures')
@@ -41,28 +42,37 @@ describe(`performance issues`, () => {
     })
 
     test(`original: Merging several PDFs takes a long time/Uses a lot of memory (#27)`, async () => {
-      const merger = new PDFMerger()
+      const merger = new PDFMergerOld()
       
-      merger.add(path.join(FIXTURES_DIR, 'apollo_17.pdf'), Array.from(Array(20), (_, index) => index + 1))
-      merger.add(path.join(FIXTURES_DIR, 'sense_and_sensibility.pdf'), "1 - 254")
+      merger.add(path.join(FIXTURES_DIR, 'sense_and_sensibility.pdf'), Array.from(Array(200), (_, index) => index + 1))
       merger.add(path.join(FIXTURES_DIR, 'pride_and_prejudice.pdf'), "1 to 264")
       merger.add(path.join(FIXTURES_DIR, 'long_wikipedia_page.pdf'), "1 to 100")
 
       await merger.save(path.join(TMP_DIR, 'output1.pdf'))
     })
 
+    test(`original: Merging several PDFs takes a long time/Uses a lot of memory (#27)`, async () => {
+      const merger = new PDFMerger()
+      
+      merger.add(path.join(FIXTURES_DIR, 'sense_and_sensibility.pdf'), Array.from(Array(200), (_, index) => index + 1))
+      merger.add(path.join(FIXTURES_DIR, 'pride_and_prejudice.pdf'), "1 to 264")
+      merger.add(path.join(FIXTURES_DIR, 'long_wikipedia_page.pdf'), "1 to 100")
+
+      await merger.save(path.join(TMP_DIR, 'output2.pdf'))
+    })
+
+
     test(`browser: Merging several PDFs takes a long time/Uses a lot of memory (#27)`, async () => {
       const merger = new PDFMergerBrowser()
 
-      await merger.add(await fs.readFile(path.join(FIXTURES_DIR, 'apollo_17.pdf')), Array.from(Array(20), (_, index) => index + 1))
-      await merger.add(await fs.readFile(path.join(FIXTURES_DIR, 'sense_and_sensibility.pdf')), "1 - 254")
+      await merger.add(await fs.readFile(path.join(FIXTURES_DIR, 'sense_and_sensibility.pdf')), Array.from(Array(200), (_, index) => index + 1))
       await merger.add(await fs.readFile(path.join(FIXTURES_DIR, 'pride_and_prejudice.pdf')), "1 to 264")
       await merger.add(await fs.readFile(path.join(FIXTURES_DIR, 'long_wikipedia_page.pdf')), "1 to 100")
       
       const buffer = await merger.saveAsBuffer()
 
       // Write the buffer as a file
-      await fs.writeFile(path.join(TMP_DIR, "outputx.pdf"), buffer)
+      await fs.writeFile(path.join(TMP_DIR, "output3.pdf"), buffer)
     })
 
   })
